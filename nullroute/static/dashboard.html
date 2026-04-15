@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NullRoute — Network Traffic Classification & QoS</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080C14;
+    --surface: #0E1420;
+    --surface2: #131A28;
+    --border: #1E2A3E;
+    --accent: #00D4FF;
+    --accent2: #7B61FF;
+    --green: #00FF87;
+    --red: #FF4757;
+    --orange: #FFA502;
+    --yellow: #ECCC68;
+    --blue: #1E90FF;
+    --gray: #747D8C;
+    --text: #E8EDF5;
+    --muted: #5A6880;
+    --voip: #FF4757;
+    --multimedia: #FFA502;
+    --gaming: #ECCC68;
+    --web: #2ED573;
+    --file_transfer: #1E90FF;
+    --background: #747D8C;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+  /* ── Header ── */
+  header {
+    padding: 28px 0 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo { display: flex; align-items: center; gap: 14px; }
+  .logo-icon {
+    width: 44px; height: 44px; background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px; display: grid; place-items: center; font-size: 20px;
+    box-shadow: 0 0 20px rgba(0,212,255,0.3);
+  }
+  .logo-text h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo-text p { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+  .team-badge {
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;
+  }
+  .badge {
+    background: var(--surface2); border: 1px solid var(--border);
+    padding: 5px 12px; border-radius: 20px; font-size: 11px;
+    font-family: 'JetBrains Mono', monospace; color: var(--accent);
+  }
+
+  /* ── Nav Tabs ── */
+  .nav-tabs {
+    display: flex; gap: 4px; padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .nav-tab {
+    padding: 8px 18px; border-radius: 8px; cursor: pointer;
+    font-size: 13px; font-weight: 600; transition: all 0.2s;
+    background: transparent; border: 1px solid transparent;
+    color: var(--muted); white-space: nowrap;
+  }
+  .nav-tab:hover { color: var(--text); background: var(--surface2); }
+  .nav-tab.active {
+    background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(123,97,255,0.15));
+    border-color: rgba(0,212,255,0.3); color: var(--accent);
+  }
+
+  /* ── Panels ── */
+  .panel { display: none; padding: 28px 0; }
+  .panel.active { display: block; }
+
+  /* ── Stats Row ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px; margin-bottom: 28px;
+  }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px; position: relative; overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .stat-card:hover { transform: translateY(-2px); border-color: rgba(0,212,255,0.3); }
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--accent-color, var(--accent));
+  }
+  .stat-value { font-size: 28px; font-weight: 800; color: var(--accent-color, var(--accent)); margin-bottom: 4px; }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
+
+  /* ── Section Titles ── */
+  .section-title {
+    font-size: 14px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── Tables ── */
+  .table-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead { background: var(--surface2); }
+  th { padding: 12px 16px; text-align: left; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
+  td { padding: 11px 16px; border-top: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  tr:hover td { background: rgba(0,212,255,0.03); }
+
+  /* ── Priority Pill ── */
+  .pill {
+    display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10px;
+    font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .pill-critical { background: rgba(255,71,87,0.2); color: var(--red); border: 1px solid rgba(255,71,87,0.3); }
+  .pill-high { background: rgba(255,165,2,0.2); color: var(--orange); border: 1px solid rgba(255,165,2,0.3); }
+  .pill-medium { background: rgba(46,213,115,0.2); color: var(--green); border: 1px solid rgba(46,213,115,0.3); }
+  .pill-low { background: rgba(30,144,255,0.2); color: var(--blue); border: 1px solid rgba(30,144,255,0.3); }
+  .pill-be { background: rgba(116,125,140,0.2); color: var(--gray); border: 1px solid rgba(116,125,140,0.3); }
+
+  /* ── Charts Canvas ── */
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 24px;
+  }
+  .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 18px; color: var(--text); }
+  canvas { max-width: 100%; }
+
+  /* ── Bar charts (CSS) ── */
+  .bar-chart { display: flex; flex-direction: column; gap: 10px; }
+  .bar-row { display: grid; grid-template-columns: 110px 1fr 70px; align-items: center; gap: 12px; }
+  .bar-label { font-size: 12px; color: var(--text); font-family: 'JetBrains Mono', monospace; text-align: right; }
+  .bar-track { background: var(--surface2); border-radius: 4px; height: 20px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 1s cubic-bezier(.4,0,.2,1); display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; }
+  .bar-val { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; text-align: right; }
+
+  /* ── QoS Detail Cards ── */
+  .qos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  .qos-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px; border-left: 3px solid var(--c, var(--accent));
+    transition: transform 0.2s;
+  }
+  .qos-card:hover { transform: translateY(-2px); }
+  .qos-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .qos-card-label { font-size: 15px; font-weight: 700; text-transform: uppercase; }
+  .qos-row { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; border-top: 1px solid var(--border); }
+  .qos-key { color: var(--muted); }
+  .qos-val { font-family: 'JetBrains Mono', monospace; color: var(--text); font-weight: 600; }
+  .qos-rationale {
+    margin-top: 12px; padding: 10px; background: var(--surface2); border-radius: 8px;
+    font-size: 11px; color: var(--muted); line-height: 1.5;
+  }
+
+  /* ── Perf comparison ── */
+  .perf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .perf-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px;
+  }
+  .perf-class { font-size: 14px; font-weight: 700; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .metric-row { margin-bottom: 12px; }
+  .metric-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .metric-compare { display: flex; gap: 8px; }
+  .metric-before, .metric-after {
+    flex: 1; padding: 6px 10px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: center;
+  }
+  .metric-before { background: rgba(116,125,140,0.15); color: var(--gray); }
+  .metric-after { background: rgba(0,255,135,0.08); color: var(--green); }
+  .improve { font-size: 11px; color: var(--green); margin-top: 3px; text-align: right; font-family: 'JetBrains Mono', monospace; }
+
+  /* ── Architecture ── */
+  .arch-wrap { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 20px 0; }
+  .arch-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 32px; min-width: 320px; text-align: center;
+    position: relative;
+  }
+  .arch-box-title { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+  .arch-box-sub { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .arch-arrow {
+    width: 2px; height: 30px; background: var(--border);
+    position: relative; margin: 0 auto;
+  }
+  .arch-arrow::after {
+    content: '▼'; position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%);
+    color: var(--accent); font-size: 10px;
+  }
+  .arch-row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+
+  /* ── Concept cards ── */
+  .concept-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+  .concept-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px;
+  }
+  .concept-icon { font-size: 24px; margin-bottom: 10px; }
+  .concept-title { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+  .concept-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+  @media (max-width: 768px) {
+    .charts-grid { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    header { flex-direction: column; gap: 12px; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⬡</div>
+      <div class="logo-text">
+        <h1>NullRoute</h1>
+        <p>MACSE513 · Computer Networks Project · Team NullRoute</p>
+      </div>
+    </div>
+    <div class="team-badge">
+      <div class="badge">Vishal · 25MAI1003</div>
+      <div class="badge">Vishwa J · 25MAI1004</div>
+      <div class="badge">Harish V · 25MAI1019</div>
+    </div>
+  </header>
+
+  <div class="nav-tabs">
+    <div class="nav-tab active" onclick="showPanel('overview')">📊 Overview</div>
+    <div class="nav-tab" onclick="showPanel('classification')">🔍 Classification</div>
+    <div class="nav-tab" onclick="showPanel('qos')">⚡ QoS Policy</div>
+    <div class="nav-tab" onclick="showPanel('performance')">📈 Performance</div>
+    <div class="nav-tab" onclick="showPanel('architecture')">🏗️ Architecture</div>
+    <div class="nav-tab" onclick="showPanel('concepts')">📚 CN Concepts</div>
+  </div>
+
+  <!-- ── OVERVIEW PANEL ── -->
+  <div class="panel active" id="panel-overview">
+    <div class="stats-grid">
+      <div class="stat-card" style="--accent-color: var(--accent)">
+        <div class="stat-value">300</div>
+        <div class="stat-label">Packets Analyzed</div>
+        <div class="stat-sub">From LAN capture simulation</div>
+      </div>
+      <div class="stat-card" style="--accent-color: var(--green)">
+        <div class="stat-value">95.67%</div>
+        <div class="stat-label">Classification Accuracy</div>
+        <div class="stat-sub">Rule-based engine</div>
+      </div>
+      <div class="stat-card" style="--accent-color: var(--orange)">
+        <div class="stat-value">6</div>
+        <div class="stat-label">Traffic Categories</div>
+        <div class="stat-sub">VoIP · Video · Gaming · Web · FTP · BG</div>
+      </div>
+      <div class="stat-card" style="--accent-color: var(--accent2)">
+        <div class="stat-value">6</div>
+        <div class="stat-label">QoS Priority Classes</div>
+        <div class="stat-sub">Per RFC 4594 / IEEE 802.1p</div>
+      </div>
+      <div class="stat-card" style="--accent-color: var(--red)">
+        <div class="stat-value">+1919ms</div>
+        <div class="stat-label">Gaming Delay Improvement</div>
+        <div class="stat-sub">After QoS applied</div>
+      </div>
+      <div class="stat-card" style="--accent-color: var(--yellow)">
+        <div class="stat-value">EF/AF</div>
+        <div class="stat-label">DSCP Marking Used</div>
+        <div class="stat-sub">RFC 2474 Differentiated Services</div>
+      </div>
+    </div>
+
+    <div class="section-title">Traffic Distribution by Category</div>
+    <div class="chart-card" style="margin-bottom: 20px;">
+      <div class="chart-title">Packet Count per Traffic Class (300 total)</div>
+      <div class="bar-chart" id="dist-bars"></div>
+    </div>
+
+    <div class="section-title">Captured Packet Sample (last 15 records)</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Flow ID</th><th>Src IP</th><th>Dst IP</th><th>Protocol</th><th>Dst Port</th>
+          <th>Pkt Size</th><th>Rate (pkts/s)</th><th>Duration</th><th>Class</th>
+        </tr></thead>
+        <tbody id="sample-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── CLASSIFICATION PANEL ── -->
+  <div class="panel" id="panel-classification">
+    <div class="section-title">Classification Rule Engine</div>
+    <div class="table-wrap" style="margin-bottom: 24px;">
+      <table>
+        <thead><tr>
+          <th>Rule Name</th><th>Protocol</th><th>Port Range</th><th>Assigned Class</th><th>Confidence</th><th>Standard</th>
+        </tr></thead>
+        <tbody id="rules-table"></tbody>
+      </table>
+    </div>
+
+    <div class="section-title">Classification Results Summary</div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">Accuracy per Traffic Class</div>
+        <div class="bar-chart" id="acc-bars"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Confidence Level Distribution</div>
+        <div class="bar-chart" id="conf-bars"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── QoS POLICY PANEL ── -->
+  <div class="panel" id="panel-qos">
+    <div class="stats-grid" style="margin-bottom:24px;">
+      <div class="stat-card" style="--accent-color:#FF4757"><div class="stat-value">P1</div><div class="stat-label">VoIP Priority</div><div class="stat-sub">DSCP 46 – EF</div></div>
+      <div class="stat-card" style="--accent-color:#FFA502"><div class="stat-value">P2</div><div class="stat-label">Multimedia</div><div class="stat-sub">DSCP 34 – AF41</div></div>
+      <div class="stat-card" style="--accent-color:#ECCC68"><div class="stat-value">P3</div><div class="stat-label">Gaming</div><div class="stat-sub">DSCP 40 – CS5</div></div>
+      <div class="stat-card" style="--accent-color:#2ED573"><div class="stat-value">P4</div><div class="stat-label">Web</div><div class="stat-sub">DSCP 26 – AF31</div></div>
+      <div class="stat-card" style="--accent-color:#1E90FF"><div class="stat-value">P5</div><div class="stat-label">File Transfer</div><div class="stat-sub">DSCP 10 – AF11</div></div>
+      <div class="stat-card" style="--accent-color:#747D8C"><div class="stat-value">P6</div><div class="stat-label">Background</div><div class="stat-sub">DSCP 0 – BE</div></div>
+    </div>
+    <div class="section-title">Detailed QoS Policy Cards (RFC 4594 / IEEE 802.1p)</div>
+    <div class="qos-grid" id="qos-cards"></div>
+  </div>
+
+  <!-- ── PERFORMANCE PANEL ── -->
+  <div class="panel" id="panel-performance">
+    <div class="section-title">Before vs After QoS — Performance Metrics</div>
+    <div class="perf-grid" id="perf-cards"></div>
+
+    <div class="section-title" style="margin-top:24px;">Delay Comparison (ms)</div>
+    <div class="chart-card">
+      <div class="chart-title">End-to-End Delay: Without QoS vs With QoS</div>
+      <div class="bar-chart" id="delay-compare"></div>
+    </div>
+  </div>
+
+  <!-- ── ARCHITECTURE PANEL ── -->
+  <div class="panel" id="panel-architecture">
+    <div class="section-title">System Architecture</div>
+    <div class="arch-wrap" id="arch-diagram"></div>
+  </div>
+
+  <!-- ── CONCEPTS PANEL ── -->
+  <div class="panel" id="panel-concepts">
+    <div class="section-title">Computer Networking Concepts Demonstrated</div>
+    <div class="concept-grid" id="concept-grid"></div>
+  </div>
+</div>
+
+<script>
+// ── Data ───────────────────────────────────────────────────────────────────────
+const COLORS = {
+  voip:'#FF4757', multimedia:'#FFA502', gaming:'#ECCC68',
+  web:'#2ED573', file_transfer:'#1E90FF', background:'#747D8C'
+};
+const TRAFFIC_DIST = { web:90, multimedia:75, file_transfer:45, background:45, voip:30, gaming:15 };
+const ACCURACY = { voip:100, multimedia:97, gaming:93, web:95, file_transfer:96, background:92 };
+const QOS_POLICY = {
+  voip:     { priority:1, name:'CRITICAL',    dscp:46, dscp_name:'EF',    ieee:6, sched:'Priority Queue (PQ)',         bw:'10%', delay:150,   jitter:30,   loss:'<1%',  color:'#FF4757',
+    rationale:'Real-time voice requires ultra-low latency and jitter. Per ITU-T G.114, max one-way delay must be <150ms for acceptable voice quality.' },
+  multimedia:{ priority:2, name:'HIGH',       dscp:34, dscp_name:'AF41',  ieee:5, sched:'Weighted Fair Queuing (WFQ)', bw:'30%', delay:400,   jitter:100,  loss:'<2%',  color:'#FFA502',
+    rationale:'Video streaming requires consistent bandwidth and bounded delay. WFQ ensures fair sharing during congestion while maintaining playback quality.' },
+  gaming:   { priority:3, name:'HIGH',        dscp:40, dscp_name:'CS5',   ieee:5, sched:'Weighted Fair Queuing (WFQ)', bw:'15%', delay:100,   jitter:20,   loss:'<1%',  color:'#ECCC68',
+    rationale:'Interactive gaming is latency-sensitive. Low delay and jitter are critical for real-time game state synchronization.' },
+  web:      { priority:4, name:'MEDIUM',      dscp:26, dscp_name:'AF31',  ieee:3, sched:'Weighted Fair Queuing (WFQ)', bw:'25%', delay:1000,  jitter:500,  loss:'<3%',  color:'#2ED573',
+    rationale:"Web browsing is interactive but tolerates moderate latency. TCP's retransmission handles packet loss, so some queuing delay is acceptable." },
+  file_transfer:{ priority:5, name:'LOW',     dscp:10, dscp_name:'AF11',  ieee:2, sched:'Deficit Round Robin (DRR)',  bw:'15%', delay:5000,  jitter:2000, loss:'<5%',  color:'#1E90FF',
+    rationale:'Bulk file transfers benefit from large queues and can tolerate delay. TCP ensures reliable delivery. DRR provides fair bulk throughput.' },
+  background:{ priority:6, name:'BEST EFFORT',dscp:0,  dscp_name:'BE',    ieee:0, sched:'Best Effort (FIFO)',          bw:'5%',  delay:10000, jitter:5000, loss:'<10%', color:'#747D8C',
+    rationale:'Control/management traffic (DNS, NTP, SNMP) consumes minimal bandwidth. Best effort delivery is acceptable for infrequent control messages.' },
+};
+const PERF = [
+  { cls:'voip',         before_delay:1505, after_delay:16,   before_jitter:280, after_jitter:8,   before_loss:8.2,  after_loss:0.3 },
+  { cls:'multimedia',   before_delay:1768, after_delay:63,   before_jitter:240, after_jitter:32,  before_loss:7.5,  after_loss:0.8 },
+  { cls:'gaming',       before_delay:1931, after_delay:11,   before_jitter:310, after_jitter:5,   before_loss:9.1,  after_loss:0.2 },
+  { cls:'web',          before_delay:744,  after_delay:164,  before_jitter:180, after_jitter:78,  before_loss:5.4,  after_loss:1.1 },
+  { cls:'file_transfer',before_delay:386,  after_delay:1213, before_jitter:120, after_jitter:350, before_loss:3.8,  after_loss:2.1 },
+  { cls:'background',   before_delay:424,  after_delay:2963, before_jitter:95,  after_jitter:800, before_loss:4.2,  after_loss:3.9 },
+];
+const RULES = [
+  { name:'VoIP (SIP)',        proto:'UDP', ports:'5060–5061', cls:'voip',         conf:'HIGH',   std:'IANA' },
+  { name:'VoIP (RTP Media)',  proto:'UDP', ports:'16384–16385',cls:'voip',        conf:'HIGH',   std:'RFC 3550' },
+  { name:'Online Gaming',     proto:'UDP', ports:'3074',      cls:'gaming',       conf:'HIGH',   std:'IANA' },
+  { name:'Video (RTSP)',      proto:'UDP', ports:'554',        cls:'multimedia',  conf:'HIGH',   std:'RFC 2326' },
+  { name:'Video (RTMP)',      proto:'TCP', ports:'1935',       cls:'multimedia',  conf:'HIGH',   std:'Adobe' },
+  { name:'FTP Data/Control',  proto:'TCP', ports:'20–21',      cls:'file_transfer',conf:'HIGH', std:'RFC 959' },
+  { name:'SSH/SCP',           proto:'TCP', ports:'22',         cls:'file_transfer',conf:'HIGH', std:'RFC 4251' },
+  { name:'SMB File Share',    proto:'TCP', ports:'445',        cls:'file_transfer',conf:'HIGH', std:'SMB3' },
+  { name:'DNS',               proto:'UDP', ports:'53',         cls:'background',  conf:'HIGH',   std:'RFC 1035' },
+  { name:'NTP',               proto:'UDP', ports:'123',        cls:'background',  conf:'HIGH',   std:'RFC 5905' },
+  { name:'HTTP',              proto:'TCP', ports:'80',         cls:'web',         conf:'HIGH',   std:'RFC 7230' },
+  { name:'HTTPS',             proto:'TCP', ports:'443',        cls:'web',         conf:'HIGH',   std:'RFC 8446' },
+  { name:'Heuristic: Small UDP long-lived', proto:'UDP', ports:'Any', cls:'voip', conf:'MEDIUM',std:'DiffServ' },
+  { name:'Heuristic: Bulk TCP transfer',   proto:'TCP', ports:'Any', cls:'file_transfer',conf:'MEDIUM',std:'DiffServ' },
+  { name:'Default fallback',  proto:'Any', ports:'Any',        cls:'background',  conf:'LOW',    std:'BE' },
+];
+const SAMPLE_PACKETS = [
+  { fid:'FLOW-12345', src:'192.168.1.10', dst:'203.45.67.89', proto:'TCP', port:443,   size:850,  rate:312,  dur:2.1,  cls:'web' },
+  { fid:'FLOW-23456', src:'192.168.1.22', dst:'45.33.21.10',  proto:'UDP', port:554,   size:1400, rate:4200, dur:45.0, cls:'multimedia' },
+  { fid:'FLOW-34567', src:'192.168.0.5',  dst:'172.16.0.1',   proto:'UDP', port:53,    size:72,   rate:15,   dur:0.01, cls:'background' },
+  { fid:'FLOW-45678', src:'192.168.1.33', dst:'64.90.182.55', proto:'TCP', port:21,    size:1460, rate:8900, dur:32.0, cls:'file_transfer' },
+  { fid:'FLOW-56789', src:'192.168.1.44', dst:'203.11.22.33', proto:'UDP', port:5060,  size:180,  rate:90,   dur:120,  cls:'voip' },
+  { fid:'FLOW-67890', src:'192.168.1.55', dst:'108.23.44.11', proto:'UDP', port:3074,  size:320,  rate:180,  dur:600,  cls:'gaming' },
+  { fid:'FLOW-78901', src:'192.168.1.12', dst:'8.8.8.8',      proto:'UDP', port:123,   size:48,   rate:5,    dur:0.1,  cls:'background' },
+  { fid:'FLOW-89012', src:'192.168.0.8',  dst:'151.101.1.69', proto:'TCP', port:443,   size:650,  rate:280,  dur:1.8,  cls:'web' },
+  { fid:'FLOW-90123', src:'192.168.1.77', dst:'93.184.216.34',proto:'TCP', port:80,    size:420,  rate:150,  dur:0.9,  cls:'web' },
+  { fid:'FLOW-01234', src:'192.168.1.99', dst:'52.35.67.12',  proto:'UDP', port:1935,  size:1380, rate:3800, dur:90.0, cls:'multimedia' },
+  { fid:'FLOW-11111', src:'192.168.1.14', dst:'192.168.1.1',  proto:'UDP', port:67,    size:342,  rate:2,    dur:0.05, cls:'background' },
+  { fid:'FLOW-22222', src:'192.168.1.66', dst:'89.12.43.111', proto:'TCP', port:445,   size:1450, rate:7200, dur:15.0, cls:'file_transfer' },
+  { fid:'FLOW-33333', src:'192.168.0.21', dst:'176.32.98.166',proto:'UDP', port:16384, size:172,  rate:80,   dur:200,  cls:'voip' },
+  { fid:'FLOW-44444', src:'192.168.1.38', dst:'112.55.66.77', proto:'UDP', port:27015, size:420,  rate:220,  dur:900,  cls:'gaming' },
+  { fid:'FLOW-55555', src:'192.168.1.50', dst:'208.43.22.11', proto:'TCP', port:22,    size:1440, rate:6800, dur:8.0,  cls:'file_transfer' },
+];
+const ARCH_LAYERS = [
+  { title:'LAN / Network Interface', sub:'Packet ingress from eth0 / wlan0 (Wireshark / Scapy)' },
+  { title:'Module 1 — Traffic Capture', sub:'Packet sniffing · flow ID assignment · raw CSV logging' },
+  { title:'Module 2 — Feature Extraction', sub:'Flow attributes · rate · duration · size category · derived features' },
+  { title:'Module 3 — Traffic Classification', sub:'Rule engine (port+protocol) → Heuristics → Label assignment' },
+  { title:'Module 4 — QoS Recommendation', sub:'DSCP marking · IEEE 802.1p · Scheduling class · SLA parameters' },
+  { title:'Module 5 — Performance Evaluation', sub:'Before/After comparison · Delay · Jitter · Loss · Throughput' },
+  { title:'Module 6 — Visualization & Reporting', sub:'Matplotlib charts · CSV reports · Summary text report' },
+];
+const CONCEPTS = [
+  { icon:'🌐', title:'TCP/IP Protocol Suite', desc:'Packets classified by protocol (TCP/UDP/ICMP) and port. Demonstrates Layer 3/4 awareness as in RFC 791 and RFC 793.' },
+  { icon:'📡', title:'DiffServ (RFC 2474/4594)', desc:'DSCP values (EF=46, AF41=34, BE=0) mark packets for different forwarding treatments across the network.' },
+  { icon:'🏷️', title:'IEEE 802.1p QoS Tagging', desc:'Layer 2 priority tags (0–7) enable QoS even on switches. VoIP gets priority 6, best-effort gets 0.' },
+  { icon:'⚖️', title:'Weighted Fair Queuing (WFQ)', desc:'Multimedia and web traffic share bandwidth fairly. WFQ prevents starvation while providing proportional service.' },
+  { icon:'📊', title:'Traffic Flow Analysis', desc:'Flow-based classification groups packets by 5-tuple (src IP, dst IP, src port, dst port, protocol).' },
+  { icon:'📉', title:'Network Performance Metrics', desc:'Measures throughput (Kbps), delay (ms), jitter (ms), and packet loss (%) — core metrics in ITU-T G.1010.' },
+  { icon:'🔀', title:'Priority Queuing (PQ)', desc:'VoIP packets bypass all other queues. Emergency-level scheduling ensures <150ms delay per ITU-T G.114.' },
+  { icon:'🔁', title:'Deficit Round Robin (DRR)', desc:'File transfers use DRR to share remaining bandwidth fairly without starving large flows.' },
+  { icon:'🔍', title:'Port-based Classification', desc:'Uses IANA standard port assignments (DNS=53, HTTP=80, FTP=21) as primary classification signal.' },
+  { icon:'📶', title:'Bandwidth Management', desc:'Each QoS class gets a guaranteed bandwidth share. Prevents any single class from monopolising the link.' },
+  { icon:'🛡️', title:'QoS SLA Parameters', desc:'Defines per-class SLAs: max delay, max jitter, packet loss tolerance — metrics used in enterprise SLAs.' },
+  { icon:'🧠', title:'Heuristic Classification', desc:'Fallback rules use packet size, rate, and duration patterns when port-based rules fail — mimicking NBAR.' },
+];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function pillHtml(name) {
+  const map = { 'CRITICAL':'pill-critical', 'HIGH':'pill-high', 'MEDIUM':'pill-medium', 'LOW':'pill-low', 'BEST EFFORT':'pill-be' };
+  return `<span class="pill ${map[name]||'pill-be'}">${name}</span>`;
+}
+function colorDot(cls) { return `<span class="dot" style="background:${COLORS[cls]||'#888'}"></span>`; }
+
+function makeBars(container, items, maxVal) {
+  container.innerHTML = items.map(({label, val, color}) => `
+    <div class="bar-row">
+      <div class="bar-label">${label}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${(val/maxVal*100)}%;background:${color};"></div>
+      </div>
+      <div class="bar-val">${val}</div>
+    </div>`).join('');
+}
+
+// ── Init Functions ─────────────────────────────────────────────────────────────
+function initOverview() {
+  // Traffic dist bars
+  const distItems = Object.entries(TRAFFIC_DIST).map(([k,v])=>({label:k,val:v,color:COLORS[k]}));
+  makeBars(document.getElementById('dist-bars'), distItems, 100);
+
+  // Sample table
+  const tbody = document.getElementById('sample-table');
+  tbody.innerHTML = SAMPLE_PACKETS.map(p=>`
+    <tr>
+      <td>${p.fid}</td><td>${p.src}</td><td>${p.dst}</td>
+      <td style="color:${p.proto==='TCP'?'#00D4FF':'#7B61FF'}">${p.proto}</td>
+      <td>${p.port}</td><td>${p.size}B</td><td>${p.rate}</td><td>${p.dur}s</td>
+      <td><span style="color:${COLORS[p.cls]};font-weight:700">${p.cls}</span></td>
+    </tr>`).join('');
+}
+
+function initClassification() {
+  // Rules table
+  const tbody = document.getElementById('rules-table');
+  tbody.innerHTML = RULES.map(r=>`
+    <tr>
+      <td>${r.name}</td>
+      <td style="color:${r.proto==='TCP'?'#00D4FF':r.proto==='UDP'?'#7B61FF':'#FFA502'}">${r.proto}</td>
+      <td>${r.ports}</td>
+      <td><span style="color:${COLORS[r.cls]||'#888'};font-weight:700">${r.cls}</span></td>
+      <td><span class="pill ${r.conf==='HIGH'?'pill-medium':r.conf==='MEDIUM'?'pill-low':'pill-be'}">${r.conf}</span></td>
+      <td style="color:var(--muted)">${r.std}</td>
+    </tr>`).join('');
+
+  // Accuracy bars
+  const accItems = Object.entries(ACCURACY).map(([k,v])=>({label:k,val:v,color:COLORS[k]}));
+  makeBars(document.getElementById('acc-bars'), accItems, 100);
+
+  // Confidence distribution
+  const confItems = [
+    {label:'HIGH conf', val:240, color:'#2ED573'},
+    {label:'MEDIUM conf', val:45, color:'#FFA502'},
+    {label:'LOW conf', val:15, color:'#FF4757'},
+  ];
+  makeBars(document.getElementById('conf-bars'), confItems, 250);
+}
+
+function initQoS() {
+  const container = document.getElementById('qos-cards');
+  container.innerHTML = Object.entries(QOS_POLICY).map(([key, p]) => `
+    <div class="qos-card" style="--c:${p.color}">
+      <div class="qos-card-header">
+        <div class="qos-card-label" style="color:${p.color}">${key.replace('_',' ')}</div>
+        ${pillHtml(p.name)}
+      </div>
+      <div class="qos-row"><span class="qos-key">DSCP Value</span><span class="qos-val">${p.dscp} (${p.dscp_name})</span></div>
+      <div class="qos-row"><span class="qos-key">IEEE 802.1p</span><span class="qos-val">Priority ${p.ieee}</span></div>
+      <div class="qos-row"><span class="qos-key">Scheduling</span><span class="qos-val">${p.sched}</span></div>
+      <div class="qos-row"><span class="qos-key">BW Guarantee</span><span class="qos-val">${p.bw}</span></div>
+      <div class="qos-row"><span class="qos-key">Max Delay</span><span class="qos-val">${p.delay} ms</span></div>
+      <div class="qos-row"><span class="qos-key">Max Jitter</span><span class="qos-val">${p.jitter} ms</span></div>
+      <div class="qos-row"><span class="qos-key">Packet Loss</span><span class="qos-val">${p.loss}</span></div>
+      <div class="qos-rationale">💡 ${p.rationale}</div>
+    </div>`).join('');
+}
+
+function initPerformance() {
+  const container = document.getElementById('perf-cards');
+  container.innerHTML = PERF.map(p=>{
+    const di = (p.before_delay - p.after_delay);
+    const isHighPri = ['voip','gaming','multimedia','web'].includes(p.cls);
+    return `
+    <div class="perf-card">
+      <div class="perf-class">${colorDot(p.cls)} ${p.cls.replace('_',' ').toUpperCase()}</div>
+      <div class="metric-row">
+        <div class="metric-label">End-to-End Delay</div>
+        <div class="metric-compare">
+          <div class="metric-before">${p.before_delay}ms</div>
+          <div class="metric-after">${p.after_delay}ms</div>
+        </div>
+        <div class="improve" style="color:${isHighPri?'var(--green)':'var(--red)'}">
+          ${isHighPri?'▼':'▲'} ${Math.abs(di)}ms ${isHighPri?'improvement':'increase (lower priority)'}
+        </div>
+      </div>
+      <div class="metric-row">
+        <div class="metric-label">Jitter</div>
+        <div class="metric-compare">
+          <div class="metric-before">${p.before_jitter}ms</div>
+          <div class="metric-after">${p.after_jitter}ms</div>
+        </div>
+      </div>
+      <div class="metric-row">
+        <div class="metric-label">Packet Loss</div>
+        <div class="metric-compare">
+          <div class="metric-before">${p.before_loss}%</div>
+          <div class="metric-after">${p.after_loss}%</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Delay compare bar chart
+  const maxDelay = Math.max(...PERF.map(p=>p.before_delay));
+  const ctr = document.getElementById('delay-compare');
+  ctr.innerHTML = PERF.map(p=>`
+    <div style="margin-bottom:14px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px;font-family:'JetBrains Mono',monospace">${p.cls}</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="flex:1">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:2px">Without QoS</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${p.before_delay/maxDelay*100}%;background:#555577"></div></div>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:10px;color:var(--green);margin-bottom:2px">With QoS</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${p.after_delay/maxDelay*100}%;background:${COLORS[p.cls]}"></div></div>
+        </div>
+        <div style="min-width:80px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted)">${p.before_delay}→${p.after_delay}ms</div>
+      </div>
+    </div>`).join('');
+}
+
+function initArchitecture() {
+  const wrap = document.getElementById('arch-diagram');
+  wrap.innerHTML = ARCH_LAYERS.map((l,i) => `
+    ${i>0 ? '<div class="arch-arrow"></div>' : ''}
+    <div class="arch-box" style="border-color:rgba(0,212,255,${0.1+i*0.12})">
+      <div class="arch-box-title">⬡ ${l.title}</div>
+      <div class="arch-box-sub">${l.sub}</div>
+    </div>`).join('');
+}
+
+function initConcepts() {
+  const container = document.getElementById('concept-grid');
+  container.innerHTML = CONCEPTS.map(c=>`
+    <div class="concept-card">
+      <div class="concept-icon">${c.icon}</div>
+      <div class="concept-title">${c.title}</div>
+      <div class="concept-desc">${c.desc}</div>
+    </div>`).join('');
+}
+
+// ── Tab Navigation ─────────────────────────────────────────────────────────────
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  const inits = { overview:initOverview, classification:initClassification, qos:initQoS, performance:initPerformance, architecture:initArchitecture, concepts:initConcepts };
+  if (inits[id]) inits[id]();
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+initOverview();
+</script>
+</body>
+</html>

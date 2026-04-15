@@ -1,0 +1,7 @@
+traffic_class,packet_count,before_throughput_kbps,after_throughput_kbps,before_delay_ms,after_delay_ms,delay_improvement_ms,before_jitter_ms,after_jitter_ms,jitter_improvement_ms,before_packet_loss_pct,after_packet_loss_pct,loss_improvement_pct
+background,46,307.28,294.77,824.8,1775.2,-950.4,219.1,623.4,-404.3,8.01,0.79,7.22
+file_transfer,43,43705.01,40604.45,2732.9,1096.4,1636.5,172.3,379.7,-207.4,11.87,0.46,11.41
+gaming,9,1321.28,1207.69,1531.2,19.8,1511.4,223.4,1.4,222.0,11.2,0.4,10.8
+multimedia,77,33903.9,30689.05,2615.3,52.7,2562.6,212.8,5.0,207.8,11.93,0.24,11.69
+voip,35,737.92,698.66,1228.8,18.0,1210.8,96.2,2.5,93.7,7.17,0.05,7.12
+web,90,2246.57,2235.99,2577.4,190.5,2386.9,194.4,33.2,161.2,5.84,0.65,5.19

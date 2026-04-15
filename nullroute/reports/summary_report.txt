@@ -1,0 +1,89 @@
+======================================================================
+  NULLROUTE - INTELLIGENT NETWORK TRAFFIC CLASSIFICATION
+  AND QoS RECOMMENDATION SYSTEM - SUMMARY REPORT
+======================================================================
+  MACSE513 - Computer Networks | School of Computer Science
+  Team: Vishal (25MAI1003), Vishwa J (25MAI1004), Harish V (25MAI1019)
+======================================================================
+
+  Total Packets Analyzed : 300
+  Classification Accuracy: 97.33%
+
+  TRAFFIC DISTRIBUTION:
+  --------------------------------------------------
+  web                 90 pkts ( 30.0%) | DSCP=26 | MEDIUM
+  multimedia          77 pkts ( 25.7%) | DSCP=34 | HIGH
+  background          46 pkts ( 15.3%) | DSCP= 0 | BEST EFFORT
+  file_transfer       43 pkts ( 14.3%) | DSCP=10 | LOW
+  voip                35 pkts ( 11.7%) | DSCP=46 | CRITICAL
+  gaming               9 pkts (  3.0%) | DSCP=40 | HIGH
+
+  QoS POLICY SUMMARY (per RFC 4594 / IEEE 802.1p):
+  --------------------------------------------------
+
+  [CRITICAL] VOIP
+    DSCP     : 46 (EF (Expedited Forwarding))
+    IEEE 802 : 6
+    Sched    : Priority Queue (PQ)
+    BW Guar  : 10%
+    Max Delay: 150 ms
+    Rationale: Real-time voice requires ultra-low latency and jitter. Per ITU-T G.114, max one-way delay must be <150ms for acceptable voice quality.
+
+  [HIGH] MULTIMEDIA
+    DSCP     : 34 (AF41 (Assured Forwarding 4-1))
+    IEEE 802 : 5
+    Sched    : Weighted Fair Queuing (WFQ)
+    BW Guar  : 30%
+    Max Delay: 400 ms
+    Rationale: Video streaming requires consistent bandwidth and bounded delay. WFQ ensures fair sharing during congestion while maintaining playback quality.
+
+  [HIGH] GAMING
+    DSCP     : 40 (CS5 (Class Selector 5))
+    IEEE 802 : 5
+    Sched    : Weighted Fair Queuing (WFQ)
+    BW Guar  : 15%
+    Max Delay: 100 ms
+    Rationale: Interactive gaming is latency-sensitive. Low delay and jitter are critical for real-time game state synchronization.
+
+  [MEDIUM] WEB
+    DSCP     : 26 (AF31 (Assured Forwarding 3-1))
+    IEEE 802 : 3
+    Sched    : Weighted Fair Queuing (WFQ)
+    BW Guar  : 25%
+    Max Delay: 1000 ms
+    Rationale: Web browsing is interactive but tolerates moderate latency. TCP's retransmission handles packet loss, so some queuing delay is acceptable.
+
+  [LOW] FILE_TRANSFER
+    DSCP     : 10 (AF11 (Assured Forwarding 1-1))
+    IEEE 802 : 2
+    Sched    : Deficit Round Robin (DRR)
+    BW Guar  : 15%
+    Max Delay: 5000 ms
+    Rationale: Bulk file transfers benefit from large queues and can tolerate delay. TCP ensures reliable delivery. DRR provides fair bulk throughput.
+
+  [BEST EFFORT] BACKGROUND
+    DSCP     : 0 (BE (Best Effort / Default))
+    IEEE 802 : 0
+    Sched    : Best Effort (FIFO)
+    BW Guar  : 5%
+    Max Delay: 10000 ms
+    Rationale: Control/management traffic (DNS, NTP, SNMP) consumes minimal bandwidth. Best effort delivery is acceptable for infrequent control messages.
+
+  PERFORMANCE COMPARISON (Before vs After QoS):
+  --------------------------------------------------
+  Class           Delay Before Delay After  Improvement
+  --------------------------------------------------
+  background           824.8ms    1775.2ms     -950.4ms
+  file_transfer       2732.9ms    1096.4ms    +1636.5ms
+  gaming              1531.2ms      19.8ms    +1511.4ms
+  multimedia          2615.3ms      52.7ms    +2562.6ms
+  voip                1228.8ms      18.0ms    +1210.8ms
+  web                 2577.4ms     190.5ms    +2386.9ms
+
+======================================================================
+  CONCEPTS DEMONSTRATED:
+    TCP/IP Protocol Suite, DiffServ (RFC 2474/4594),
+    IEEE 802.1p QoS, Flow-Based Traffic Classification,
+    Bandwidth Utilization, Jitter & Delay Analysis,
+    Weighted Fair Queuing (WFQ), Priority Queuing (PQ)
+======================================================================
